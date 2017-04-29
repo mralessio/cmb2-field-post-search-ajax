@@ -32,9 +32,19 @@
 					});
 					return {suggestions: suggestions};
 				},
+				beforeRender: function (container, suggestions) {
+					var that = this;
+					container.find('.autocomplete-suggestion').each(function(i, suggestion){
+						if (suggestions[i].tmpl) {
+							var tmpl = suggestions[i].tmpl.replace(/{{value}}/g, $(suggestion).html()).replace(/{{link}}/g, suggestion.guid);
+							$(suggestion).html(tmpl);
+						}
+					});
+				},
 				params:{
 					action  	: 'cmb_post_search_ajax_get_results',
 					psacheck	: psa.nonce,
+					fid 		: fid, 
 					object		: object,
 					query_args	: query_args,
 				},
@@ -45,13 +55,19 @@
 					$(this).next('img.cmb-post-search-ajax-spinner').hide();
 				},
 				onSelect: function (suggestion) {
+					var tmpl;
+					if (suggestion.tmpl) {
+						tmpl  = suggestion.tmpl.replace(/{{value}}/g, suggestion.value).replace(/{{link}}/g, suggestion.guid);
+					} else {
+						tmpl = '<a href="'+suggestion.guid+'" target="_blank" class="edit-link">'+suggestion.value+'</a>';
+					}
 					$(this).devbridgeAutocomplete('clearCache');
 					var lid 	 = $(this).attr('id') + '_results';
 					var limit 	 = $(this).attr('data-limit');
 					var sortable = $(this).attr('data-sortable');
 					if( limit > 1 ){
 						var handle = (sortable == 1) ? '<span class="hndl"></span>' : '';				
-						$('#'+lid).append('<li>'+handle+'<input type="hidden" name="'+lid+'[]" value="'+suggestion.data+'"><a href="'+suggestion.guid+'" target="_blank" class="edit-link">'+suggestion.value+'</a><a class="remover"><span class="dashicons dashicons-no"></span><span class="dashicons dashicons-dismiss"></span></a></li>');
+						$('#'+lid).append('<li>'+handle+'<input type="hidden" name="'+lid+'[]" value="'+suggestion.data+'">'+tmpl+'<a class="remover"><span class="dashicons dashicons-no"></span><span class="dashicons dashicons-dismiss"></span></a></li>');
 						$(this).val('');
 						if( limit === $('#' + lid + ' li').length ){
 							$(this).prop( 'disabled', 'disabled' );

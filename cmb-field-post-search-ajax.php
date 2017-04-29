@@ -58,7 +58,25 @@ if( ! class_exists( 'MAG_CMB2_Field_Post_Search_Ajax' ) ) {
 							$guid 	= get_edit_post_link($val);
 							$title	= get_the_title($val);
 						}
-						echo '<li>'.$handle.'<input type="hidden" name="'.$field_name.'_results[]" value="'.$val.'"><a href="'.$guid.'" target="_blank" class="edit-link">'.$title.'</a><a class="remover"><span class="dashicons dashicons-no"></span><span class="dashicons dashicons-dismiss"></span></a></li>';
+						/**
+						 * Allows to customize templates for selected options in Autocomplete.
+						 * @since
+						 * @param string  $tmpl              Template
+						 * @param int     $val          	 Post ID or User ID depending on 'object_type'
+						 * @param string  $field_name        CMB field ID
+						 * @param string  $object_type       Object type set up in the field: post || user
+						 */
+						$tmpl = apply_filters( 'mag_cmb_post_search_template', '', $val, $field_name, $object_type );
+						$tmpl = apply_filters( "mag_{$field_name}_search_template", $tmpl, $val, $field_name, $object_type );
+
+						if ( $tmpl ) {
+							// {{link}} is optional, {{value}} is optional or necessary if you want Autocomplete to highlight the results values
+							$tmpl = str_replace( array( '{{value}}', '{{link}}' ), array( $title, $guid ), $tmpl );
+						} else {
+							$tmpl = '<a href="' . $guid . '" target="_blank" class="edit-link">' . $title . '</a>';
+						}
+						
+						echo '<li>' . $handle . '<input type="hidden" name="' . $field_name . '_results[]" value="' . $val . '">' . $tmpl . '<a class="remover"><span class="dashicons dashicons-no"></span><span class="dashicons dashicons-dismiss"></span></a></li>';
 					}
 				}
 				echo '</ul>';			
@@ -167,6 +185,8 @@ if( ! class_exists( 'MAG_CMB2_Field_Post_Search_Ajax' ) ) {
 			else {
 				$args 		= json_decode(stripslashes(htmlspecialchars_decode($_POST['query_args'])), true);
 				$args['s'] 	= $_POST['query'];
+				$object_type = esc_attr( $_POST['object'] );
+				$field_id = esc_attr( $_POST['fid'] );
 				$datas 		= array();
 				if( $_POST['object'] == 'user' ){
 					$args['search'] = '*'.esc_attr($_POST['query']).'*';
@@ -175,11 +195,18 @@ if( ! class_exists( 'MAG_CMB2_Field_Post_Search_Ajax' ) ) {
 					if (!empty($results)) {
 						foreach( $results as $result ){
 							$user_info = get_userdata($result->ID);
+							/**
+							 * Allows to customize results templates for user object type.
+							 * Params are the same as for 'mag_cmb_post_search_template' filter
+							 */
+							$tmpl = apply_filters( 'mag_cmb_post_search_results_template', '', $result->ID, $field_id, $object_type );
+							$tmpl = apply_filters( "mag_{$field_id}_search_results_template", $tmpl, $result->ID, $field_id, $object_type );
 							// Define filter "mag_cmb_post_search_ajax_result" to allow customize ajax results.
 							$datas[] = apply_filters( 'mag_cmb_post_search_ajax_result', array(
 								'value' => $user_info->display_name,
 								'data'	=> $result->ID,
-								'guid'	=> get_edit_user_link($result->ID)
+								'guid'	=> get_edit_user_link($result->ID),
+								'tmpl'  => $tmpl,
 							) );
 						}
 					}
@@ -187,11 +214,18 @@ if( ! class_exists( 'MAG_CMB2_Field_Post_Search_Ajax' ) ) {
 					$results 	= new WP_Query( $args );
 					if ( $results->have_posts() ) :
 						while ( $results->have_posts() ) : $results->the_post();
+							/**
+							 * Allows to customize results templates for post object type.
+							 * Params are the same as for 'mag_cmb_post_search_template' filter
+							 */
+							$tmpl = apply_filters( 'mag_cmb_post_search_results_template', '', get_the_ID(), $field_id, $object_type );
+							$tmpl = apply_filters( "mag_{$field_id}_search_results_template", $tmpl, get_the_ID(), $field_id, $object_type );
 							// Define filter "mag_cmb_post_search_ajax_result" to allow customize ajax results.
 							$datas[] = apply_filters( 'mag_cmb_post_search_ajax_result', array(
 								'value' => get_the_title(),
 								'data'	=> get_the_ID(),
-								'guid'	=> get_edit_post_link()
+								'guid'	=> get_edit_post_link(),
+								'tmpl'  => $tmpl,
 							) );
 						endwhile;
 					endif;	
